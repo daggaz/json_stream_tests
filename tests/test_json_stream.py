@@ -13,7 +13,7 @@ negative = [
     (file.name[2:], file.read_bytes()) for file in files.iterdir() if file.name.startswith("n_")
 ]
 undefined = [
-    file for file in files.iterdir() if file.name.startswith("i_")
+    (file.name[2:], file.read_bytes()) for file in files.iterdir() if file.name.startswith("i_")
 ]
 
 
@@ -41,3 +41,22 @@ class TestJSONStream:
     def test_visit_negative_scenarios(self, filename: str, content: bytes) -> None:
         with io.BytesIO(content) as binary_file, pytest.raises(Exception):
             json_stream.visit(binary_file, lambda item, path: None)
+
+    @pytest.mark.parametrize("filename,content", undefined)
+    def test_undefined_scenarios(self, filename: str, content: bytes) -> None:
+        """
+        Just check that parser do not not crash with segfault or something like that.
+        """
+        with io.BytesIO(content) as binary_file:
+            try:
+                json_stream.visit(binary_file, lambda item, path: None)
+            except Exception:
+                pass
+
+        with io.BytesIO(content) as binary_file:
+            try:
+                result = json_stream.load(binary_file)
+                if result is not None and not isinstance(result, (int, float, str, bool)):
+                    result.read_all()
+            except Exception:
+                pass
